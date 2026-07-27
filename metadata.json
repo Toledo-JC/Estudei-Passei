@@ -1,0 +1,6 @@
+{
+  "name": "Estudei & Passei Ensino Médio",
+  "description": "Plataforma de gestão escolar, simulador preditivo de notas, planejamento dual Escola/ENEM, revisões inteligentes e dashboard dos pais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,25 @@
+{
+  "short_name": "Estudei&Passei",
+  "name": "Estudei & Passei Ensino Médio",
+  "description": "Plataforma de Gestão Escolar, Simulador de Notas, Planejamento Dual e Central de Estudos Ativos com IA.",
+  "icons": [
+    {
+      "src": "/pwa-icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/"
+}

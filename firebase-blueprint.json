@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "users": {
+      "title": "Users",
+      "description": "Perfil dos usuários (pais e alunos)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["parent", "student"] },
+        "familyId": { "type": "string" },
+        "studentYear": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "name", "role", "familyId"]
+    },
+    "families": {
+      "title": "Families",
+      "description": "Grupos familiares para vincular pais e filhos",
+      "type": "object",
+      "properties": {
+        "familyName": { "type": "string" },
+        "familyCode": { "type": "string" },
+        "parentUids": { "type": "array", "items": { "type": "string" } },
+        "studentUids": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["familyName", "familyCode", "parentUids"]
+    },
+    "studentData": {
+      "title": "StudentData",
+      "description": "Dados do aluno (matérias, tarefas, notas, cronograma)",
+      "type": "object",
+      "properties": {
+        "studentUid": { "type": "string" },
+        "familyId": { "type": "string" },
+        "subjects": { "type": "array" },
+        "timetable": { "type": "array" },
+        "studentTasks": { "type": "array" },
+        "evaluations": { "type": "array" },
+        "studyLogs": { "type": "array" },
+        "spacedRevisions": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["studentUid", "familyId"]
+    }
+  }
+}
