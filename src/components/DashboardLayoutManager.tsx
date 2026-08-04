@@ -2,6 +2,7 @@ import React from 'react';
 import { Subject, Evaluation, StudySessionLog, SchoolConfig, AppLayoutType } from '../types';
 import { DailyTimerSection } from './DailyTimerSection';
 import { SchoolConfigSection } from './SchoolConfigSection';
+import { WeeklyStudyChart } from './WeeklyStudyChart';
 import {
   Calculator,
   Sliders,
@@ -16,8 +17,12 @@ import {
   Flame,
   LayoutGrid,
   CheckSquare,
-  AlertCircle
+  AlertCircle,
+  Play,
+  Target
 } from 'lucide-react';
+
+import { DailyCycle } from '../types';
 
 interface DashboardLayoutManagerProps {
   layoutType: AppLayoutType;
@@ -37,6 +42,10 @@ interface DashboardLayoutManagerProps {
   onLogStudySession: (subjectId: string, topic: string, minutes: number, mode: 'escola' | 'enem') => void;
   onUpdateSubjects: (subjects: Subject[]) => void;
   onSaveConfig: (cfg: SchoolConfig) => void;
+  dailyCycle?: DailyCycle | null;
+  onMarkBlockCompleted?: (blockId: string, actualMinutes: number, questionsDone?: number, questionsCorrect?: number, notes?: string) => void;
+  onSkipBlock?: (blockId: string) => void;
+  onExtendBlockTime?: (blockId: string, additionalMins?: number) => void;
 }
 
 export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
@@ -56,7 +65,11 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
   onResetTimer,
   onLogStudySession,
   onUpdateSubjects,
-  onSaveConfig
+  onSaveConfig,
+  dailyCycle,
+  onMarkBlockCompleted,
+  onSkipBlock,
+  onExtendBlockTime
 }) => {
   // Common math calculations
   const totalMinutesAllTime = studyLogs.reduce((acc, curr) => acc + curr.minutes, 0);
@@ -87,6 +100,22 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => onNavigateTab('active-study-hub')}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-emerald-500/25 transform hover:scale-105 active:scale-95"
+            >
+              <Play className="w-4 h-4 fill-slate-950" />
+              <span>▶ Iniciar Estudo Agora</span>
+            </button>
+
+            <button
+              onClick={() => onNavigateTab('active-study-hub')}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl transition flex items-center space-x-2 shadow-md"
+            >
+              <Target className="w-4 h-4 text-amber-300" />
+              <span>🎯 Questões & Acertos</span>
+            </button>
+
             <button
               onClick={onToggleConfigModal}
               className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition flex items-center space-x-2 shadow-sm"
@@ -119,6 +148,16 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
           onResetTimer={onResetTimer}
           onLogStudySession={onLogStudySession}
           onUpdateSubjects={onUpdateSubjects}
+          dailyCycle={dailyCycle}
+          onMarkBlockCompleted={onMarkBlockCompleted}
+          onSkipBlock={onSkipBlock}
+          onExtendBlockTime={onExtendBlockTime}
+        />
+
+        {/* Weekly Study Activity Chart */}
+        <WeeklyStudyChart
+          subjects={subjects}
+          studyLogs={studyLogs}
         />
 
         {/* Bento Grid Subjects */}
@@ -236,17 +275,22 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
           </div>
 
           {/* List of Subjects in Sidebar */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 shadow-xs">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Acesso Rápido Matérias</h4>
-            <div className="space-y-1.5">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Acesso Rápido Matérias</h4>
+              <span className="text-[10px] text-slate-400 lg:hidden">Deslize para o lado ➔</span>
+            </div>
+            
+            {/* Mobile Horizontal Carousel / Desktop Vertical Stack */}
+            <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-2 lg:space-y-1.5 scrollbar-none pb-2 lg:pb-0">
               {subjects.map(s => (
                 <button
                   key={s.id}
                   onClick={() => onNavigateTab('dual-planner')}
-                  className="w-full text-left p-2 bg-slate-50 hover:bg-indigo-50 rounded-xl text-xs font-semibold text-slate-800 flex justify-between items-center transition"
+                  className="shrink-0 lg:shrink w-auto lg:w-full text-left p-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 lg:border-transparent rounded-xl text-xs font-semibold text-slate-800 flex items-center justify-between gap-3 transition shadow-2xs"
                 >
-                  <span className="truncate">{s.name}</span>
-                  <span className="text-[10px] text-indigo-600 font-bold bg-indigo-100 px-1.5 py-0.5 rounded">
+                  <span className="truncate whitespace-nowrap">{s.name}</span>
+                  <span className="text-[10px] text-indigo-600 font-bold bg-indigo-100 px-2 py-0.5 rounded-md whitespace-nowrap">
                     {s.topics.filter(t => t.taught).length} aulas
                   </span>
                 </button>
@@ -267,40 +311,78 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
             onResetTimer={onResetTimer}
             onLogStudySession={onLogStudySession}
             onUpdateSubjects={onUpdateSubjects}
+            dailyCycle={dailyCycle}
+            onMarkBlockCompleted={onMarkBlockCompleted}
+            onSkipBlock={onSkipBlock}
+            onExtendBlockTime={onExtendBlockTime}
           />
 
           {showConfigModal && (
             <SchoolConfigSection config={schoolConfig} onSaveConfig={onSaveConfig} />
           )}
 
+          {/* Weekly Study Activity Chart */}
+          <WeeklyStudyChart
+            subjects={subjects}
+            studyLogs={studyLogs}
+          />
+
           {/* Subjects Overview */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <h3 className="text-base font-bold text-slate-900 font-display">
-              Matérias e Cronograma do Trimestre / Bimestre
-            </h3>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 font-display">
+                Matérias e Cronograma do Trimestre / Bimestre
+              </h3>
+              <button
+                onClick={() => onNavigateTab('dual-planner')}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1"
+              >
+                <span>Ver Detalhes</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {subjects.map(s => (
-                <div key={s.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-900">{s.name}</span>
-                    <span className="text-[10px] text-slate-500">{s.teacherName || 'Prof. N/A'}</span>
+              {subjects.map(s => {
+                const taughtCount = s.topics.filter(t => t.taught).length;
+                const totalTopics = s.topics.length;
+                const percentage = totalTopics > 0 ? Math.round((taughtCount / totalTopics) * 100) : 0;
+
+                return (
+                  <div key={s.id} className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">{s.name}</span>
+                        <span className="text-[11px] text-slate-500">{s.teacherName || 'Prof. Não Informado'}</span>
+                      </div>
+                      <span className="text-[10px] font-extrabold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">
+                        {percentage}% Concluído
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-indigo-600 h-full rounded-full transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                      <span>{taughtCount} de {totalTopics} conteúdos lecionados</span>
+                      <button
+                        onClick={() => onNavigateTab('dual-planner')}
+                        className="text-indigo-600 font-bold hover:underline"
+                      >
+                        Diário ➔
+                      </button>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-indigo-600 h-full rounded-full transition-all"
-                      style={{
-                        width: `${s.topics.length > 0 ? (s.topics.filter(t => t.taught).length / s.topics.length) * 100 : 0}%`
-                      }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-500 block text-right font-mono">
-                    {s.topics.filter(t => t.taught).length} de {s.topics.length} tópicos lecionados
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
+
       </div>
     );
   }
@@ -347,11 +429,21 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
           onResetTimer={onResetTimer}
           onLogStudySession={onLogStudySession}
           onUpdateSubjects={onUpdateSubjects}
+          dailyCycle={dailyCycle}
+          onMarkBlockCompleted={onMarkBlockCompleted}
+          onSkipBlock={onSkipBlock}
+          onExtendBlockTime={onExtendBlockTime}
         />
 
         {showConfigModal && (
           <SchoolConfigSection config={schoolConfig} onSaveConfig={onSaveConfig} />
         )}
+
+        {/* Weekly Study Activity Chart */}
+        <WeeklyStudyChart
+          subjects={subjects}
+          studyLogs={studyLogs}
+        />
 
         {/* Linear Stream of Subjects */}
         <div className="space-y-3">
@@ -417,6 +509,12 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
         <SchoolConfigSection config={schoolConfig} onSaveConfig={onSaveConfig} />
       )}
 
+      {/* Weekly Study Activity Chart */}
+      <WeeklyStudyChart
+        subjects={subjects}
+        studyLogs={studyLogs}
+      />
+
       {/* 4 Kanban Columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Column 1: Disciplinas Cadastradas */}
@@ -446,7 +544,7 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
           </div>
 
           <div className="space-y-2">
-            {subjects.flatMap(s => s.topics.filter(t => t.taught).map(t => ({ subjectName: s.name, topic: t }))).slice(0, 6).map((item, i) => (
+            {(subjects || []).flatMap(s => (s.topics || []).filter(t => t.taught).map(t => ({ subjectName: s.name, topic: t }))).slice(0, 6).map((item, i) => (
               <div key={i} className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1">
                 <span className="text-[10px] font-bold text-emerald-800 block">{item.subjectName}</span>
                 <span className="text-xs font-semibold text-slate-900 block">{item.topic.name}</span>
@@ -463,8 +561,8 @@ export const DashboardLayoutManager: React.FC<DashboardLayoutManagerProps> = ({
           </div>
 
           <div className="space-y-2">
-            {subjects.flatMap(s => (s.examScopeTopicIds || []).map(topicId => {
-              const topic = s.topics.find(t => t.id === topicId);
+            {(subjects || []).flatMap(s => (s.examScopeTopicIds || []).map(topicId => {
+              const topic = (s.topics || []).find(t => t.id === topicId);
               return topic ? { subjectName: s.name, topic } : null;
             })).filter(Boolean).slice(0, 6).map((item: any, i) => (
               <div key={i} className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1">

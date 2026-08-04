@@ -35,6 +35,100 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "Estudei & Passei Ensino Médio API" });
 });
 
+app.get("/api/version", (_req, res) => {
+  res.json({
+    version: "1.3.0",
+    buildTimestamp: "2026-07-28T08:53:00Z",
+    commit: "v1.3.0-pwa-installable",
+    service: "Estudei & Passei Ensino Médio"
+  });
+});
+
+// 0. Diagnóstico Pedagógico do Aluno (IA Gemini)
+app.post("/api/ai/diagnostic", async (req, res) => {
+  try {
+    const { studentName, subjects, evaluations, studyLogs, schoolConfig } = req.body;
+
+    const ai = getGenAI();
+    const prompt = `Você é o Coordenador Pedagógico e Especialista em Diagnóstico de Aprendizagem do "Estudei & Passei".
+Analise o histórico completo do estudante "${studentName || "Aluno"}":
+
+Média de Corte da Escola: ${schoolConfig?.passingScore || 6.0}
+
+Disciplinas Cadastradas:
+${JSON.stringify(subjects || [], null, 2)}
+
+Notas em Avaliações Registradas:
+${JSON.stringify(evaluations || [], null, 2)}
+
+Sessões de Estudo Registradas (Tempo e Constância):
+${JSON.stringify(studyLogs || [], null, 2)}
+
+Sua missão:
+1. Calcule e identifique as lacunas pedagógicas reais do estudante (matérias/tópicos com notas abaixo da média de corte ou com poucas horas estudadas).
+2. Determine o ritmo/constância de aprendizado (Acelerado, Regular, Inconstante, ou Atencao Necessaria).
+3. Crie um Plano de Revisão de 4 Semanas focado nas maiores vulnerabilidades identificadas.
+4. Redija uma orientação acolhedora, pedagógica e prática direcionada aos PAIS (sem pânico, focada em incentivo e organização).
+
+Retorne ESTRITAMENTE um JSON com a seguinte estrutura:
+{
+  "overallScore": 78,
+  "learningPace": "Regular",
+  "atRiskTopics": [
+    {
+      "subjectName": "Matemática",
+      "topicName": "Funções Quadráticas",
+      "severity": "alta",
+      "recommendation": "Rever conceitos com 20 min de flashcards e resolução de 3 exercícios comentados."
+    }
+  ],
+  "strengths": ["Boa constância em Biologia", "Excelente média em Humanas"],
+  "fourWeekRevisionPlan": [
+    {
+      "weekNumber": 1,
+      "title": "Semana 1: Fortalecimento de Exatas e Conceitos Base",
+      "focusSubjects": ["Matemática", "Física"],
+      "actionItems": ["Resolver 5 exercícios de Funções", "Fazer 15 min de leitura guiada em Física"]
+    },
+    {
+      "weekNumber": 2,
+      "title": "Semana 2: Consolidação e Simulação",
+      "focusSubjects": ["Química", "Matemática"],
+      "actionItems": ["Revisão com o Tutor Socrático IA", "Fazer 1 simulado curto de 5 questões"]
+    },
+    {
+      "weekNumber": 3,
+      "title": "Semana 3: Lapidação de Redação e Humanas",
+      "focusSubjects": ["Redação", "História"],
+      "actionItems": ["Treinar 1 estrutura de proposta de intervenção no ENEM"]
+    },
+    {
+      "weekNumber": 4,
+      "title": "Semana 4: Avaliação de Progresso e Ajustes",
+      "focusSubjects": ["Geral"],
+      "actionItems": ["Refazer teste de diagnóstico e celebrar evolução"]
+    }
+  ],
+  "pedagogicalAdviceForParents": "Conselho pedagógico empático e prático para os pais..."
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "{}");
+    res.json(parsed);
+  } catch (error: any) {
+    console.error("Erro no Diagnóstico IA:", error);
+    res.status(500).json({ error: error?.message || "Erro ao gerar relatório de diagnóstico com a IA." });
+  }
+});
+
+
 // 1. Tutor Socrático
 app.post("/api/ai/tutor", async (req, res) => {
   try {
@@ -567,6 +661,112 @@ Retorne ESTRITAMENTE em JSON:
     res.status(500).json({ error: error?.message || "Erro ao gerar simulado inédito." });
   }
 });
+
+// 11. Validação de Foto de Questões Manuais por IA (Gemini Vision Antitrapaça)
+app.post("/api/ai/analyze-question-photo", async (req, res) => {
+  try {
+    const { imageBase64, claimedTotal, claimedCorrect, subjectName, topicName } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: "Envie a foto da folha ou caderno com as questões." });
+    }
+
+    const ai = getGenAI();
+    const cleanData = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+    const prompt = `Você é o Auditor Educacional do "Estudei & Passei".
+Sua função é verificar fotos de cadernos, apostilas ou livros físicos de estudantes para garantir a veracidade dos lançamentos de exercícios manuais.
+
+Dados declarados pelo aluno:
+- Matéria: ${subjectName || "Geral"}
+- Tópico: ${topicName || "Geral"}
+- Quantidade total declarada de questões feitas: ${claimedTotal || 10}
+- Quantidade declarada de acertos: ${claimedCorrect || 8}
+
+Analise a imagem minuciosamente:
+1. Identifique se o conteúdo da foto refere-se a material de estudo (exercícios, manuscritos, apostila, cálculos ou anotações acadêmicas).
+2. Estime quantas questões resolvidas parecem estar visíveis na imagem.
+3. Verifique se há correções, vistos, notas, gabaritos ou marcações de acertos/erros (círculos em alternativas, certos em caneta vermelha/azul, etc).
+4. Atribua um grau de confiança (0 a 100).
+5. Forneça uma justificativa pedagógica e amigável.
+
+Retorne ESTRITAMENTE em formato JSON com esta estrutura:
+{
+  "isStudyMaterial": true,
+  "aiEstimatedQuestions": 12,
+  "hasVisibleCorrections": true,
+  "aiConfidence": 90,
+  "aiFeedback": "Detectadas aproximadamente 12 questões resolvidas à mão com marcações de correção visíveis."
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: {
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: cleanData } },
+          { text: prompt },
+        ],
+      },
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "{}");
+    res.json(parsed);
+  } catch (error: any) {
+    console.error("Erro ao analisar foto de questões manuais:", error);
+    res.status(500).json({ error: error?.message || "Erro ao analisar imagem com a IA Gemini Vision." });
+  }
+});
+
+// 12. Gerador de Quiz para Olimpíadas de Estudo da Turma
+app.post("/api/ai/generate-olympiad-quiz", async (req, res) => {
+  try {
+    const { title, subjectName, questionCount } = req.body;
+    const numQuestions = questionCount || 10;
+
+    const ai = getGenAI();
+    const prompt = `Gere um Quiz de Desafio para uma Olimpíada de Estudo entre alunos de Ensino Médio.
+Título da Olimpíada: "${title || "Olimpíada de Estudos"}"
+Matéria: "${subjectName || "Conhecimentos Gerais"}"
+Quantidade de Questões: ${numQuestions}
+
+Regras:
+- As questões devem ser envolventes, desafiadoras e no estilo ENEM/Vestibulares.
+- Cada questão precisa de 4 ou 5 alternativas e explicação do gabarito.
+
+Retorne ESTRITAMENTE em JSON:
+{
+  "title": "${title || "Olimpíada de Estudos"}",
+  "subjectName": "${subjectName || "Geral"}",
+  "questions": [
+    {
+      "id": "q-olymp-1",
+      "statement": "Enunciado da questão...",
+      "options": ["A) ...", "B) ...", "C) ...", "D) ...", "E) ..."],
+      "correctIndex": 0,
+      "explanation": "Explicação pedagógica da resposta correta.",
+      "topic": "Tópico"
+    }
+  ]
+}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.6-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "{}");
+    res.json(parsed);
+  } catch (error: any) {
+    console.error("Erro ao gerar quiz de olimpíada:", error);
+    res.status(500).json({ error: error?.message || "Erro ao gerar questões da olimpíada com a IA." });
+  }
+});
+
 
 // -------------------------------------------------------------
 // VITE / STATIC SERVING

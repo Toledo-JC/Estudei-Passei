@@ -12,7 +12,7 @@ export const AITutorSection: React.FC<AITutorSectionProps> = ({ subjects }) => {
 
   // 1. Tutor Socrático
   const [tutorQuestion, setTutorQuestion] = useState('');
-  const [tutorSubject, setTutorSubject] = useState(subjects[0]?.name || 'Matemática');
+  const [tutorSubject, setTutorSubject] = useState((subjects || [])[0]?.name || 'Matemática');
   const [tutorResponse, setTutorResponse] = useState('');
   const [isTutorLoading, setIsTutorLoading] = useState(false);
 

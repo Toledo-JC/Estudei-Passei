@@ -22,14 +22,14 @@ export const StudentTasksWidgetSection: React.FC<StudentTasksWidgetSectionProps>
 }) => {
   const [filterType, setFilterType] = useState<string>('all');
 
-  const filteredTasks = tasks.filter((t) => {
+  const filteredTasks = (tasks || []).filter((t) => {
     if (filterType === 'all') return true;
     if (filterType === 'pending') return !t.completed;
     if (filterType === 'completed') return t.completed;
     return t.type === filterType;
   });
 
-  const pendingCount = tasks.filter(t => !t.completed).length;
+  const pendingCount = (tasks || []).filter(t => !t.completed).length;
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-5">
@@ -74,7 +74,7 @@ export const StudentTasksWidgetSection: React.FC<StudentTasksWidgetSectionProps>
       </div>
 
       {/* Filter Chips */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex overflow-x-auto sm:flex-wrap items-center gap-1.5 scrollbar-none pb-1">
         {[
           { id: 'all', label: 'Todas' },
           { id: 'pending', label: '⏳ Pendentes' },
@@ -107,7 +107,7 @@ export const StudentTasksWidgetSection: React.FC<StudentTasksWidgetSectionProps>
       ) : (
         <div className="space-y-2.5">
           {filteredTasks.map((task) => {
-            const subject = subjects.find(s => s.id === task.subjectId);
+            const subject = (subjects || []).find(s => s.id === task.subjectId);
             const calUrl = buildGoogleCalendarUrl(task, subject?.name);
 
             return (

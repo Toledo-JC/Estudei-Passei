@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SchoolConfig, PeriodType, RecoveryType, RecoveryCalc } from '../types';
 import { TooltipHelp } from './TooltipHelp';
+import { useToast } from '../contexts/ToastContext';
 import { Settings, CheckCircle2, Sliders, ShieldAlert, Plus, Trash2 } from 'lucide-react';
 
 interface SchoolConfigSectionProps {
@@ -11,11 +12,13 @@ interface SchoolConfigSectionProps {
 export const SchoolConfigSection: React.FC<SchoolConfigSectionProps> = ({ config, onSaveConfig }) => {
   const [formData, setFormData] = useState<SchoolConfig>({ ...config });
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const { showSuccessToast } = useToast();
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveConfig(formData);
     setSavedSuccess(true);
+    showSuccessToast('Regras Salvas!', 'Configurações e composição de pesos do DNA Escolar gravados com sucesso.');
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 

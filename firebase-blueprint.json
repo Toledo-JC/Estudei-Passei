@@ -11,7 +11,12 @@
         "role": { "type": "string", "enum": ["parent", "student"] },
         "familyId": { "type": "string" },
         "studentYear": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "planType": { "type": "string", "enum": ["free", "pro_parent", "pro_student", "family_pass"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "trial", "expired", "canceled"] },
+        "subscriptionValidUntil": { "type": "string" },
+        "maxStudentsAllowed": { "type": "number" }
       },
       "required": ["uid", "email", "name", "role", "familyId"]
     },

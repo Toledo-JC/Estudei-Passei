@@ -28,8 +28,8 @@ export const SchoolTimetableModal: React.FC<SchoolTimetableModalProps> = ({
 
   if (!isOpen) return null;
 
-  const enabledSubjects = subjects.filter(s => s.enabled !== false);
-  const currentDayData = localTimetable.find(d => d.dayKey === activeDayKey) || {
+  const enabledSubjects = (subjects || []).filter(s => s.enabled !== false);
+  const currentDayData = (localTimetable || []).find(d => d.dayKey === activeDayKey) || {
     dayKey: activeDayKey,
     dayName: activeDayKey.toUpperCase(),
     periods: []
@@ -307,7 +307,7 @@ export const SchoolTimetableModal: React.FC<SchoolTimetableModalProps> = ({
               </div>
             ) : (
               currentDayData.periods.map((period, idx) => {
-                const selectedSub = subjects.find(s => s.id === period.subjectId);
+                const selectedSub = (subjects || []).find(s => s.id === period.subjectId);
 
                 return (
                   <div

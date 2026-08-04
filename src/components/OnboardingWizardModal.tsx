@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { MEC_HIGH_SCHOOL_PRESET_SUBJECTS } from '../data/defaultPresets';
-import { Subject, SchoolConfig } from '../types';
+import { Subject, SchoolConfig, HighSchoolSeries } from '../types';
+import { CurriculumSetupScreen } from './CurriculumSetupScreen';
+import { BookTocScannerModal } from './BookTocScannerModal';
 import {
   Sparkles,
   GraduationCap,
@@ -17,7 +19,8 @@ import {
   Award,
   Calendar,
   Layers,
-  X
+  X,
+  Send
 } from 'lucide-react';
 
 interface OnboardingWizardModalProps {
@@ -39,17 +42,25 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   const isParent = userProfile?.role === 'parent';
 
   const [step, setStep] = useState<number>(1);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+  const modalContentRef = useRef<HTMLDivElement>(null);
 
-  // Parent Step State: Children
-  const [childrenList, setChildrenList] = useState<Array<{ name: string; year: string }>>([
-    { name: 'Lucas Toledo', year: '2º Ano do Ensino Médio' }
-  ]);
+  useEffect(() => {
+    if (modalContentRef.current) {
+      modalContentRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [step]);
+
+  // Parent Step State: Children (Starts empty for clean accounts)
+  const [childrenList, setChildrenList] = useState<Array<{ name: string; year: string }>>([]);
   const [newChildName, setNewChildName] = useState('');
   const [newChildYear, setNewChildYear] = useState('2º Ano do Ensino Médio');
 
   // Subjects Setup State
   const [subjectsChoice, setSubjectsChoice] = useState<'mec' | 'empty' | 'custom'>('mec');
   const [customSubjects, setCustomSubjects] = useState<Subject[]>(MEC_HIGH_SCHOOL_PRESET_SUBJECTS);
+  const [isBookScannerOpen, setIsBookScannerOpen] = useState(false);
 
   // School Rules State
   const [passingScore, setPassingScore] = useState<number>(6.0);
@@ -59,6 +70,8 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
 
   if (!isOpen) return null;
+
+  const derivedSeries: HighSchoolSeries = newChildYear.includes('1º') ? '1st' : newChildYear.includes('3º') ? '3rd' : '2nd';
 
   const handleAddChild = () => {
     if (!newChildName.trim()) return;
@@ -103,12 +116,12 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in zoom-in-95">
+      <div ref={modalContentRef} className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 p-6 text-white relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 flex items-center justify-center text-slate-950 font-black shadow-lg">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 flex items-center justify-center text-slate-950 font-black shadow-lg shrink-0">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
@@ -126,13 +139,25 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
               </div>
             </div>
 
-            {/* Step Indicators */}
-            <div className="hidden sm:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-2xl border border-slate-700/80 text-xs font-bold">
-              <span className={step >= 1 ? 'text-amber-400 font-extrabold' : 'text-slate-500'}>1</span>
-              <span className="text-slate-600">•</span>
-              <span className={step >= 2 ? 'text-amber-400 font-extrabold' : 'text-slate-500'}>2</span>
-              <span className="text-slate-600">•</span>
-              <span className={step >= 3 ? 'text-amber-400 font-extrabold' : 'text-slate-500'}>3</span>
+            <div className="flex items-center space-x-3">
+              {/* Step Indicators */}
+              <div className="hidden sm:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-2xl border border-slate-700/80 text-xs font-bold">
+                <span className={step >= 1 ? 'text-amber-400 font-extrabold' : 'text-slate-500'}>1</span>
+                <span className="text-slate-600">•</span>
+                <span className={step >= 2 ? 'text-amber-400 font-extrabold' : 'text-slate-500'}>2</span>
+                <span className="text-slate-600">•</span>
+                <span className={step >= 3 ? 'text-amber-400 font-extrabold' : 'text-slate-500'}>3</span>
+              </div>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setShowExitConfirmModal(true)}
+                className="p-2 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-2xl transition shrink-0"
+                title="Sair do Assistente"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -160,14 +185,30 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleCopyCode}
-                      className="w-full bg-white hover:bg-indigo-100/50 text-indigo-900 border border-indigo-300 text-xs font-bold py-2 rounded-xl flex items-center justify-center space-x-1.5 transition"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>{copiedCode ? 'Código Copiado com Sucesso!' : 'Copiar Código e Enviar para Filhos'}</span>
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="flex-1 bg-white hover:bg-indigo-100/50 text-indigo-900 border border-indigo-300 text-xs font-bold py-2 px-3 rounded-xl flex items-center justify-center space-x-1.5 transition"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>{copiedCode ? 'Copiado!' : 'Copiar Código'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const code = familyGroup?.familyCode || 'FAM-2026';
+                          const link = `${window.location.origin}?inviteCode=${code}&role=student`;
+                          const msg = `Olá! Criei nossa conta no app Estudei & Passei. Clique neste link para criar seu perfil de estudante vinculado ao responsável:\n${link}`;
+                          window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold py-2 px-3 rounded-xl transition flex items-center justify-center space-x-1.5 shadow-xs"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Enviar no WhatsApp</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -273,85 +314,23 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
             <div className="space-y-5">
               <div>
                 <span className="text-xs font-extrabold text-slate-800 block mb-1">
-                  Passo 2: Grade de Matérias Escolares
+                  Passo 2: Configuração da Grade Curricular
                 </span>
                 <p className="text-xs text-slate-500">
                   {isParent
-                    ? 'Escolha se deseja preencher a grade de matérias dos filhos agora ou deixar para eles cadastrarem.'
-                    : 'Deseja iniciar com a grade oficial do Ensino Médio (MEC) ou cadastrar do zero?'}
+                    ? 'Escolha se deseja carregar a grade padrão do ano escolar do seu filho ou permitir cadastro manual.'
+                    : 'Defina a série e o bimestre atual para carregar os tópicos de estudo sugeridos pela BNCC.'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubjectsChoice('mec');
-                    setCustomSubjects(MEC_HIGH_SCHOOL_PRESET_SUBJECTS);
-                  }}
-                  className={`p-4 rounded-2xl border text-left space-y-2 transition ${
-                    subjectsChoice === 'mec'
-                      ? 'bg-indigo-50 border-indigo-500 text-indigo-950 ring-2 ring-indigo-500/20'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <BookOpen className="w-5 h-5 text-indigo-600" />
-                    <span className="text-[10px] font-bold bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded-full">
-                      Recomendado
-                    </span>
-                  </div>
-                  <span className="text-xs font-extrabold block">
-                    Carregar Grade Padrão MEC (11 Matérias)
-                  </span>
-                  <p className="text-[11px] text-slate-500 leading-snug">
-                    Matemática, Física, Química, Biologia, História, Geografia, Português, Redação, Literatura, Filosofia e Inglês.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubjectsChoice('empty');
-                    setCustomSubjects([]);
-                  }}
-                  className={`p-4 rounded-2xl border text-left space-y-2 transition ${
-                    subjectsChoice === 'empty'
-                      ? 'bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-500/20'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <Layers className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <span className="text-xs font-extrabold block">
-                    Começar do Zero (Vazio)
-                  </span>
-                  <p className="text-[11px] text-slate-500 leading-snug">
-                    {isParent
-                      ? 'O aplicativo começará limpo para que os próprios filhos adicionem as matérias da escola deles.'
-                      : 'Cadastre suas matérias manualmente uma a uma conforme a sua escola.'}
-                  </p>
-                </button>
-              </div>
-
-              {subjectsChoice === 'mec' && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                  <span className="text-xs font-bold text-slate-700 block">
-                    Matérias que serão inseridas automaticamente ({customSubjects.length}):
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {customSubjects.map((sub) => (
-                      <span
-                        key={sub.id}
-                        className="text-[11px] font-bold bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-slate-800"
-                      >
-                        {sub.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <CurriculumSetupScreen
+                initialSeries={derivedSeries}
+                onOpenBookScanner={() => setIsBookScannerOpen(true)}
+                onCompleteSetup={(configuredSubjects) => {
+                  setCustomSubjects(configuredSubjects);
+                  setStep(3);
+                }}
+              />
             </div>
           )}
 
@@ -474,6 +453,76 @@ export const OnboardingWizardModal: React.FC<OnboardingWizardModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Book Toc Scanner Modal */}
+      <BookTocScannerModal
+        isOpen={isBookScannerOpen}
+        onClose={() => setIsBookScannerOpen(false)}
+        subjects={customSubjects}
+        onAddScannedSubjectOrTopics={(targetSubId, scannedData) => {
+          const newTopics = scannedData.chapters.flatMap(c => c.topics.map(t => ({
+            id: `top-scanned-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            name: `${c.chapterTitle}: ${t}`,
+            taught: false
+          })));
+
+          if (targetSubId === 'new') {
+            const newSub: Subject = {
+              id: `sub-scanned-${Date.now()}`,
+              name: scannedData.suggestedSubject || scannedData.bookTitle,
+              category: (scannedData.category as any) || 'Formação Geral',
+              color: 'indigo',
+              teacherName: 'Prof. Indicado',
+              topics: newTopics,
+              examScopeTopicIds: [],
+              enabled: true,
+              isCustom: true
+            };
+            setCustomSubjects(prev => [...prev, newSub]);
+          } else {
+            setCustomSubjects(prev => prev.map(s => {
+              if (s.id !== targetSubId) return s;
+              return { ...s, topics: [...s.topics, ...newTopics] };
+            }));
+          }
+        }}
+      />
+
+      {/* Confirmation Modal to Exit Wizard */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 max-w-sm w-full space-y-4 shadow-2xl text-slate-800">
+            <div className="flex items-center space-x-3 text-amber-600">
+              <div className="p-2 bg-amber-100 rounded-xl">
+                <X className="w-5 h-5 text-amber-700" />
+              </div>
+              <h3 className="text-sm font-extrabold font-display text-slate-900">Sair do Assistente de Configuração?</h3>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tem certeza que deseja sair agora? Suas alterações não salvas serão descartadas.
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowExitConfirmModal(false)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition"
+              >
+                Continuar Configurando
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitConfirmModal(false);
+                  onClose();
+                }}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition"
+              >
+                Sair sem Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Subject } from '../types';
-import { Layers, Plus, Trash2, CheckCircle2, X, ToggleLeft, ToggleRight, Sparkles, BookOpen, User, Palette } from 'lucide-react';
+import { CurriculumSetupScreen } from './CurriculumSetupScreen';
+import { Layers, Plus, Trash2, CheckCircle2, X, ToggleLeft, ToggleRight, Sparkles, BookOpen, User, Palette, RefreshCw } from 'lucide-react';
 
 interface SubjectManagerModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const SubjectManagerModal: React.FC<SubjectManagerModalProps> = ({
   onOpenBookScanner
 }) => {
   const [showAddCustomForm, setShowAddCustomForm] = useState(false);
+  const [showCurriculumSetup, setShowCurriculumSetup] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectCategory, setNewSubjectCategory] = useState<Subject['category']>('Formação Geral');
   const [newSubjectColor, setNewSubjectColor] = useState('indigo');
@@ -29,6 +31,16 @@ export const SubjectManagerModal: React.FC<SubjectManagerModalProps> = ({
     const updated = subjects.map((sub) => {
       if (sub.id === subjectId) {
         return { ...sub, enabled: sub.enabled === false ? true : false };
+      }
+      return sub;
+    });
+    onUpdateSubjects(updated);
+  };
+
+  const handleUpdateTeacherName = (subjectId: string, newTeacherName: string) => {
+    const updated = subjects.map((sub) => {
+      if (sub.id === subjectId) {
+        return { ...sub, teacherName: newTeacherName };
       }
       return sub;
     });
@@ -79,7 +91,7 @@ export const SubjectManagerModal: React.FC<SubjectManagerModalProps> = ({
   ];
 
   const handleQuickAddCommon = (item: { name: string; category: any; color: string }) => {
-    const exists = subjects.find(s => s.name.toLowerCase() === item.name.toLowerCase());
+    const exists = (subjects || []).find(s => s.name?.toLowerCase() === item.name?.toLowerCase());
     if (exists) {
       if (exists.enabled === false) {
         handleToggleSubjectEnabled(exists.id);
@@ -135,26 +147,55 @@ export const SubjectManagerModal: React.FC<SubjectManagerModalProps> = ({
         {/* Quick actions bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
           <div className="space-y-0.5">
-            <span className="text-xs font-bold text-slate-800">Criação Instantânea por Livro</span>
+            <span className="text-xs font-bold text-slate-800">Acelere com IA ou Grade Padrão</span>
             <p className="text-[11px] text-slate-500">
-              Fotografe o sumário do livro para cadastrar matérias e tópicos automaticamente.
+              Carregue a grade por série e bimestre (BNCC) ou fotografe o sumário dos livros.
             </p>
           </div>
 
-          <button
-            onClick={() => {
-              onClose();
-              onOpenBookScanner();
-            }}
-            className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center space-x-2"
-          >
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            <span>Escanear Sumário por Foto</span>
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowCurriculumSetup(!showCurriculumSetup)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center space-x-1.5"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>{showCurriculumSetup ? 'Voltar para Lista' : 'Grade Padrão por Série'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                onOpenBookScanner();
+              }}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center space-x-1.5"
+            >
+              <BookOpen className="w-4 h-4 text-indigo-300" />
+              <span>Escanear Livro</span>
+            </button>
+          </div>
         </div>
 
-        {/* List of Active & Available Subjects */}
-        <div className="space-y-4">
+        {/* Smart Curriculum Setup View if toggled */}
+        {showCurriculumSetup ? (
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-3xl space-y-4">
+            <h3 className="text-sm font-extrabold text-slate-900 font-display">
+              Recarregar Grade Curricular por Série e Bimestre
+            </h3>
+            <CurriculumSetupScreen
+              onOpenBookScanner={() => {
+                setShowCurriculumSetup(false);
+                onClose();
+                onOpenBookScanner();
+              }}
+              onCompleteSetup={(configuredSubjects) => {
+                onUpdateSubjects(configuredSubjects);
+                setShowCurriculumSetup(false);
+              }}
+            />
+          </div>
+        ) : (
+          /* List of Active & Available Subjects */
+          <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
               Disciplinas da sua Grade Escolar ({subjects.filter(s => s.enabled !== false).length} ativas)
@@ -307,9 +348,22 @@ export const SubjectManagerModal: React.FC<SubjectManagerModalProps> = ({
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500">
-                        {sub.category} • Prof: {sub.teacherName || 'Não Informado'} • {sub.topics.length} tópicos cadastrados
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {sub.category} • {sub.topics.length} tópicos
+                        </span>
+
+                        <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 hover:border-slate-300 px-2 py-0.5 rounded-lg">
+                          <User className="w-3 h-3 text-slate-400 shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="Nome do Prof."
+                            value={sub.teacherName || ''}
+                            onChange={(e) => handleUpdateTeacherName(sub.id, e.target.value)}
+                            className="bg-transparent text-[11px] font-medium text-slate-700 w-32 focus:outline-none"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -327,6 +381,7 @@ export const SubjectManagerModal: React.FC<SubjectManagerModalProps> = ({
             })}
           </div>
         </div>
+        )}
 
         {/* Footer */}
         <div className="flex justify-end pt-2 border-t border-slate-100">

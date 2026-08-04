@@ -83,7 +83,7 @@ export const SpacedRevisionSection: React.FC<SpacedRevisionSectionProps> = ({
           onChange={(e) => setSelectedSubjectId(e.target.value)}
           className="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
         >
-          {subjects.map(s => (
+          {(subjects || []).map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
@@ -107,8 +107,8 @@ export const SpacedRevisionSection: React.FC<SpacedRevisionSectionProps> = ({
 
       {/* Revisions List */}
       <div className="space-y-4">
-        {revisions.map((rev) => {
-          const subject = subjects.find(s => s.id === rev.subjectId);
+        {(revisions || []).map((rev) => {
+          const subject = (subjects || []).find(s => s.id === rev.subjectId);
 
           return (
             <div key={rev.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">

@@ -11,6 +11,8 @@ interface ThemeSelectorModalProps {
   onSelectLayout: (layout: AppLayoutType) => void;
   currentDensity: LayoutDensity;
   onSelectDensity: (density: LayoutDensity) => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 export const layoutOptions: LayoutOption[] = [
@@ -87,35 +89,59 @@ export const ThemeSelectorModal: React.FC<ThemeSelectorModalProps> = ({
   currentLayout,
   onSelectLayout,
   currentDensity,
-  onSelectDensity
+  onSelectDensity,
+  isDarkMode,
+  onToggleDarkMode
 }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl border border-slate-200 max-w-3xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 max-w-3xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto text-slate-900 dark:text-slate-100">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-indigo-100 border border-indigo-200 rounded-2xl">
-              <Palette className="w-6 h-6 text-indigo-600" />
+            <div className="p-2.5 bg-indigo-100 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-2xl">
+              <Palette className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 font-display">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white font-display">
                 Estúdio de Layouts & Temas Personalizáveis
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Escolha a estrutura de tela (4 layouts diferentes) e o estilo visual (4 temas de cores).
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center space-x-2">
+            {onToggleDarkMode && (
+              <button
+                type="button"
+                onClick={onToggleDarkMode}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+              >
+                {isDarkMode ? (
+                  <>
+                    <Sun className="w-4 h-4 text-amber-400" />
+                    <span>Modo Claro</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4 text-indigo-500" />
+                    <span>Modo Escuro</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* SECTION 1: 4 STRUCTURAL LAYOUTS */}

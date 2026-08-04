@@ -86,11 +86,11 @@ export const AdaptiveStudyCycleSection: React.FC<AdaptiveStudyCycleSectionProps>
   const [completedCycleIds, setCompletedCycleIds] = useState<string[]>([]);
   const [dailyQuestionsSolvedCount, setDailyQuestionsSolvedCount] = useState<number>(0);
 
-  const enabledSubjects = subjects.filter(s => s.enabled !== false);
+  const enabledSubjects = (subjects || []).filter(s => s.enabled !== false);
   const isWeekend = selectedDayKey === 'sabado' || selectedDayKey === 'domingo';
 
   // Find school subjects for current selected day
-  const currentDayData = timetable.find(d => d.dayKey === selectedDayKey);
+  const currentDayData = (timetable || []).find(d => d.dayKey === selectedDayKey);
   const subjectsTaughtTodayIds = Array.from(
     new Set(currentDayData?.periods.map(p => p.subjectId) || [])
   );
@@ -98,7 +98,7 @@ export const AdaptiveStudyCycleSection: React.FC<AdaptiveStudyCycleSectionProps>
     .map(id => enabledSubjects.find(s => s.id === id))
     .filter(Boolean) as Subject[];
 
-  const pendingTasks = studentTasks.filter(t => !t.completed);
+  const pendingTasks = (studentTasks || []).filter(t => !t.completed);
 
   // Update subject difficulty weight
   const handleWeightChange = (subjectId: string, newWeight: number) => {
@@ -186,7 +186,7 @@ export const AdaptiveStudyCycleSection: React.FC<AdaptiveStudyCycleSectionProps>
     const isDayWeekend = dayKey === 'sabado' || dayKey === 'domingo';
 
     // Find school subjects for specified day
-    const dayData = timetable.find(d => d.dayKey === dayKey);
+    const dayData = (timetable || []).find(d => d.dayKey === dayKey);
     const daySchoolSubjectIds = Array.from(new Set(dayData?.periods.map(p => p.subjectId) || []));
     const daySchoolSubjects = daySchoolSubjectIds
       .map(id => enabledSubjects.find(s => s.id === id))

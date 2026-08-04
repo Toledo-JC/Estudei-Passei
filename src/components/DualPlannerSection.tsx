@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Subject, TeacherTopic } from '../types';
 import { TooltipHelp } from './TooltipHelp';
-import { BookOpen, Sparkles, CheckSquare, Square, Calendar, Plus, Trash2, Clock, Award, ShieldCheck, Filter } from 'lucide-react';
+import { ManualQuestionsModal } from './ManualQuestionsModal';
+import { BookOpen, Sparkles, CheckSquare, Square, Calendar, Plus, Trash2, Clock, Award, ShieldCheck, Filter, Target } from 'lucide-react';
 
 interface DualPlannerSectionProps {
   subjects: Subject[];
@@ -17,22 +18,24 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<'journal' | 'enem' | 'assistant'>('journal');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || 'matematica');
   const [newTopicName, setNewTopicName] = useState('');
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [targetTopicForManual, setTargetTopicForManual] = useState('');
 
   // Assistant states
   const [dailyFreeHours, setDailyFreeHours] = useState<number>(3);
   const [targetFocus, setTargetFocus] = useState<'equilibrado' | 'foco_exatas' | 'foco_redacao' | 'foco_humanas' | 'personalizado'>('equilibrado');
   const [customSubjectWeights, setCustomSubjectWeights] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
-    subjects.forEach(s => { init[s.id] = s.weight || 3; });
+    (subjects || []).forEach(s => { init[s.id] = s.weight || 3; });
     return init;
   });
   const [selectedAssistantSubjectIds, setSelectedAssistantSubjectIds] = useState<string[]>(() =>
-    subjects.filter(s => s.enabled !== false).map(s => s.id)
+    (subjects || []).filter(s => s.enabled !== false).map(s => s.id)
   );
   const [generatedCycle, setGeneratedCycle] = useState<any[] | null>(null);
 
-  const activeSubjects = subjects.filter(s => s.enabled !== false);
-  const selectedSubject = activeSubjects.find(s => s.id === selectedSubjectId) || activeSubjects[0] || subjects[0];
+  const activeSubjects = (subjects || []).filter(s => s.enabled !== false);
+  const selectedSubject = activeSubjects.find(s => s.id === selectedSubjectId) || activeSubjects[0] || (subjects || [])[0];
 
   const handleToggleAssistantSubject = (subjectId: string) => {
     setSelectedAssistantSubjectIds(prev =>
@@ -188,14 +191,17 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
       {/* SUB TAB 1: Diário de Avanço do Professor */}
       {activeSubTab === 'journal' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Select Subject */}
+          {/* Left Column: Select Subject (Horizontal carousel on Mobile, Vertical on Desktop) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
-              <span>Disciplinas Escolares</span>
-              <TooltipHelp text="Selecione uma matéria para visualizar os tópicos ministrados e atualizar o escopo." />
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                <span>Disciplinas Escolares</span>
+                <TooltipHelp text="Selecione uma matéria para visualizar os tópicos ministrados e atualizar o escopo." />
+              </h3>
+              <span className="text-[10px] text-slate-400 lg:hidden">Deslize ➔</span>
+            </div>
 
-            <div className="space-y-1.5">
+            <div className="flex lg:flex-col overflow-x-auto lg:overflow-visible gap-2 lg:space-y-1.5 scrollbar-none pb-2 lg:pb-0">
               {subjects.map((sub) => {
                 const taughtCount = sub.topics.filter(t => t.taught).length;
                 const isSelected = sub.id === selectedSubjectId;
@@ -204,22 +210,26 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
                   <button
                     key={sub.id}
                     onClick={() => setSelectedSubjectId(sub.id)}
-                    className={`w-full text-left p-3 rounded-xl border transition flex items-center justify-between ${
+                    className={`shrink-0 lg:shrink w-auto lg:w-full text-left p-2.5 lg:p-3 rounded-xl border transition flex items-center justify-between gap-3 ${
                       isSelected
-                        ? 'bg-indigo-50 border-indigo-400 text-indigo-950 font-bold shadow-sm'
+                        ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm'
                         : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <div>
-                      <span className="block text-xs font-bold">{sub.name}</span>
-                      <span className="text-[11px] text-slate-500 font-normal">
+                      <span className="block text-xs font-bold whitespace-nowrap">{sub.name}</span>
+                      <span className={`text-[10px] font-normal whitespace-nowrap hidden sm:block ${
+                        isSelected ? 'text-indigo-100' : 'text-slate-500'
+                      }`}>
                         {sub.teacherName || 'Prof. Não Cadastrado'}
                       </span>
                     </div>
 
                     <div className="text-right">
-                      <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                        {taughtCount}/{sub.topics.length} ministrados
+                      <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                        isSelected ? 'bg-indigo-500 text-white' : 'bg-indigo-100 text-indigo-700'
+                      }`}>
+                        {taughtCount}/{sub.topics.length}
                       </span>
                     </div>
                   </button>
@@ -228,34 +238,53 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
             </div>
           </div>
 
+
           {/* Right Column: Topics Checklist taught in class */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
-                  {selectedSubject.category}
-                </span>
-                <h3 className="text-lg font-bold text-slate-900 mt-1 font-display">
-                  {selectedSubject.name} — Diário de Conteúdo Ministrado
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Marque exclusivamente os tópicos que o professor <strong>já explicou em sala de aula</strong>.
-                </p>
+            {!selectedSubject ? (
+              <div className="p-8 text-center text-slate-500 text-xs italic">
+                Nenhuma disciplina cadastrada para visualizar o diário de conteúdo.
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-100 gap-3">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
+                      {selectedSubject.category}
+                    </span>
+                    <h3 className="text-lg font-bold text-slate-900 mt-1 font-display">
+                      {selectedSubject.name} — Diário de Conteúdo Ministrado
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Marque os tópicos explicados pelo professor e lance matérias ou questões feitas no caderno/livro.
+                    </p>
+                  </div>
 
-            {/* Topic List */}
-            <div className="space-y-2.5">
-              {selectedSubject.topics.map((topic) => (
-                <div
-                  key={topic.id}
-                  onClick={() => handleToggleTopicTaught(selectedSubject.id, topic.id)}
-                  className={`p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
-                    topic.taught
-                      ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetTopicForManual('');
+                      setIsManualModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold rounded-xl transition shadow-xs flex items-center space-x-1.5 shrink-0"
+                  >
+                    <BookOpen className="w-4 h-4 text-slate-950" />
+                    <span>Lançar Questões do Caderno / Livro</span>
+                  </button>
+                </div>
+
+                {/* Topic List */}
+                <div className="space-y-2.5">
+                  {(selectedSubject.topics || []).map((topic) => (
+                    <div
+                      key={topic.id}
+                      onClick={() => handleToggleTopicTaught(selectedSubject.id, topic.id)}
+                      className={`p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between flex-wrap gap-2 ${
+                        topic.taught
+                          ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
                   <div className="flex items-center space-x-3">
                     {topic.taught ? (
                       <CheckSquare className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -275,6 +304,20 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
                   </div>
 
                   <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTargetTopicForManual(topic.name);
+                        setIsManualModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-lg transition flex items-center space-x-1"
+                      title="Lançar questões feitas à mão para este tópico"
+                    >
+                      <Target className="w-3 h-3 text-amber-700" />
+                      <span>+ Questões Livro</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={(e) => {
@@ -309,7 +352,9 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
                 <span>Registrar Aula</span>
               </button>
             </form>
-          </div>
+          </>
+        )}
+      </div>
         </div>
       )}
 
@@ -521,6 +566,15 @@ export const DualPlannerSection: React.FC<DualPlannerSectionProps> = ({
           )}
         </div>
       )}
+
+      {/* Manual Questions Modal */}
+      <ManualQuestionsModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        subjects={subjects}
+        initialSubjectId={selectedSubjectId}
+        initialTopic={targetTopicForManual}
+      />
     </div>
   );
 };

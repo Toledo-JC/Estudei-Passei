@@ -25,10 +25,10 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
   onImportBackupJSON,
   onSwitchActiveChildProfile
 }) => {
-  const [studentEmail, setStudentEmail] = useState(syncInfo.studentGoogleAccount || 'lucas.toledo@gmail.com');
+  const [studentEmail, setStudentEmail] = useState(syncInfo.studentGoogleAccount || '');
   const [parentEmailInput, setParentEmailInput] = useState('');
   const [parentEmailsList, setParentEmailsList] = useState<string[]>(
-    syncInfo.parentEmails.length > 0 ? syncInfo.parentEmails : [parentSettings.guardianEmail || 'responsavel@exemplo.com.br']
+    syncInfo.parentEmails.length > 0 ? syncInfo.parentEmails : (parentSettings.guardianEmail ? [parentSettings.guardianEmail] : [])
   );
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
@@ -83,8 +83,8 @@ export const GoogleDriveSyncModal: React.FC<GoogleDriveSyncModalProps> = ({
       id: newChildId,
       studentName: newChildName.trim(),
       studentYear: newChildYear,
-      schoolName: parentSettings.schoolName || 'Colégio Estudei & Passei',
-      guardianEmail: parentEmailsList[0] || 'responsavel@exemplo.com.br',
+      schoolName: parentSettings.schoolName || '',
+      guardianEmail: parentEmailsList[0] || parentSettings.guardianEmail || '',
       lastSyncedAt: 'Criado agora'
     };
 

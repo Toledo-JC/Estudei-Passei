@@ -3,13 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Estudei & Passei Ensino Médio</title>
+    <title>Estudei & Passei Ensino Médio — Edição Família</title>
+    <link rel="icon" type="image/jpeg" href="/app-logo.jpg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Estudei&Passei" />
     <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem('estudei_theme_mode');
+          if (mode === 'dark' || (!mode && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

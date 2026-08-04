@@ -1,5 +1,5 @@
 // Service Worker - Estudei & Passei Ensino Médio
-const CACHE_NAME = 'estudei-passei-v1.2.0';
+const CACHE_NAME = 'estudei-passei-v1.3.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -33,6 +33,8 @@ self.addEventListener('activate', (event) => {
 // Fetch Event - Network First with Cache Fallback
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = event.request.url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return;
 
   event.respondWith(
     fetch(event.request)

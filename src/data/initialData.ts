@@ -30,7 +30,7 @@ export const initialSubjects: Subject[] = [
     name: 'Matemática & Suas Tecnologias',
     category: 'Exatas',
     color: 'emerald',
-    teacherName: 'Prof. Carlos Eduardo',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'm1', name: 'Função Quadrática e Ponto de Mínimo/Máximo', taught: true, taughtDate: '2026-07-10' },
@@ -46,7 +46,7 @@ export const initialSubjects: Subject[] = [
     name: 'Física',
     category: 'Exatas',
     color: 'cyan',
-    teacherName: 'Profa. Mariana Luz',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'f1', name: 'Cinemática: MUV e Lançamento Vertical', taught: true, taughtDate: '2026-07-05' },
@@ -61,7 +61,7 @@ export const initialSubjects: Subject[] = [
     name: 'Química',
     category: 'Exatas',
     color: 'teal',
-    teacherName: 'Prof. Roberto',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'q1', name: 'Ligações Químicas e Geometria Molecular', taught: true, taughtDate: '2026-07-08' },
@@ -75,7 +75,7 @@ export const initialSubjects: Subject[] = [
     name: 'Biologia',
     category: 'Biológicas',
     color: 'green',
-    teacherName: 'Profa. Fernanda',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'b1', name: 'Citologia: Membrana Plasmática e Organelas', taught: true, taughtDate: '2026-07-04' },
@@ -89,7 +89,7 @@ export const initialSubjects: Subject[] = [
     name: 'História do Brasil e Geral',
     category: 'Humanas',
     color: 'amber',
-    teacherName: 'Prof. Sérgio',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'h1', name: 'Brasil Império: Primeiro e Segundo Reinado', taught: true, taughtDate: '2026-07-12' },
@@ -103,7 +103,7 @@ export const initialSubjects: Subject[] = [
     name: 'Geografia & Geopolítica',
     category: 'Humanas',
     color: 'amber',
-    teacherName: 'Prof. Marcelo',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'g1', name: 'Cartografia, Fuso Horário e Projeções', taught: true, taughtDate: '2026-07-11' },
@@ -117,7 +117,7 @@ export const initialSubjects: Subject[] = [
     name: 'Filosofia',
     category: 'Humanas',
     color: 'purple',
-    teacherName: 'Profa. Beatriz',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'fil1', name: 'Filosofia Antiga: Sócrates, Platão e Aristóteles', taught: true, taughtDate: '2026-07-09' },
@@ -130,7 +130,7 @@ export const initialSubjects: Subject[] = [
     name: 'Sociologia',
     category: 'Humanas',
     color: 'purple',
-    teacherName: 'Prof. Lucas',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'soc1', name: 'Clássicos da Sociologia: Durkheim, Marx e Weber', taught: true, taughtDate: '2026-07-14' },
@@ -143,7 +143,7 @@ export const initialSubjects: Subject[] = [
     name: 'Gramática & Interpretação de Texto',
     category: 'Linguagens',
     color: 'indigo',
-    teacherName: 'Profa. Cláudia',
+    teacherName: '',
     enabled: true,
     topics: [
       { id: 'gr1', name: 'Análise Sintática e Regência Verbal/Nominal', taught: true, taughtDate: '2026-07-16' },
@@ -445,11 +445,13 @@ export const initialSpacedRevisions: SpacedRevision[] = [
   }
 ];
 
-export const initialParentSettings: ParentGuardSettings = {
-  studentName: 'Lucas Toledo',
-  studentYear: '2º Ano do Ensino Médio',
-  schoolName: 'Colégio Estudei & Passei',
-  guardianEmail: 'responsavel@exemplo.com.br',
-  lgpdAccepted: true,
-  parentPin: '1234'
+export const cleanParentSettings: ParentGuardSettings = {
+  studentName: '',
+  studentYear: '',
+  schoolName: '',
+  guardianEmail: '',
+  lgpdAccepted: false,
+  parentPin: ''
 };
+
+export const initialParentSettings: ParentGuardSettings = cleanParentSettings;

@@ -16,3 +16,13 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = config.firestoreDatabaseId ? getFirestore(app, config.firestoreDatabaseId) : getFirestore(app);
+
+export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
+  const cleaned: any = {};
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key];
+    }
+  });
+  return cleaned as T;
+}

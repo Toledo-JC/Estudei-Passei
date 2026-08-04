@@ -19,10 +19,39 @@ import { SchoolTimetableModal } from './components/SchoolTimetableModal';
 import { AdaptiveStudyCycleSection } from './components/AdaptiveStudyCycleSection';
 import { ActiveStudyHubSection } from './components/ActiveStudyHubSection';
 import { AuthModal } from './components/AuthModal';
+import { EditProfileModal } from './components/EditProfileModal';
 import { DemoModeBanner } from './components/DemoModeBanner';
 import { OnboardingWizardModal } from './components/OnboardingWizardModal';
+import { PWAInstallModal } from './components/PWAInstallModal';
+import { UserManualModal } from './components/UserManualModal';
+import { RecoveryBanner } from './components/RecoveryBanner';
+import { ExamPrepPlan } from './components/ExamPrepPlan';
+import { UpcomingExamsAlertModal } from './components/UpcomingExamsAlertModal';
+import { UserManualPage } from './components/UserManualPage';
+import { AchievementsWall } from './components/AchievementsWall';
+import { ClassRanking } from './components/ClassRanking';
+import { CreateClassModal } from './components/CreateClassModal';
+import { JoinClassModal } from './components/JoinClassModal';
+import { OlympiadManager } from './components/OlympiadManager';
+import { DailyPlanProgress } from './components/DailyPlanProgress';
+import { CycleDashboard } from './components/CycleDashboard';
+import { DailyPlanGeneratorModal } from './components/DailyPlanGeneratorModal';
+import { StudySession } from './components/StudySession';
+import { CycleSession } from './components/CycleSession';
+import { ExternalActivityForm } from './components/ExternalActivityForm';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { AppLayout } from './layouts/AppLayout';
+import { StudyScreen } from './pages/StudyScreen';
+import { Dashboard } from './pages/Dashboard';
+import { ClassGroup } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { StudyTimerProvider } from './contexts/StudyTimerContext';
+
 import { useStudentFirestoreSync } from './hooks/useStudentFirestoreSync';
+import { useDailyPlan } from './hooks/useDailyPlan';
+import { useActivityTracker } from './hooks/useActivityTracker';
+import { Sparkles, RefreshCw, X } from 'lucide-react';
 
 import {
   initialSchoolConfig,
@@ -31,6 +60,7 @@ import {
   initialStudyLogs,
   initialSpacedRevisions,
   initialParentSettings,
+  cleanParentSettings,
   initialSchoolTimetable
 } from './data/initialData';
 
@@ -53,7 +83,6 @@ import {
 import {
   BookOpen,
   GraduationCap,
-  Sparkles,
   Calculator,
   Calendar,
   Clock,
@@ -68,9 +97,43 @@ import {
 } from 'lucide-react';
 
 function MainAppContent() {
+  const { userProfile, familyStudents, activeStudentUid, isDemoMode } = useAuth();
+
   // Navigation & Modals States
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  useEffect(() => {
+    const rawPath = location.pathname.replace('/', '');
+    if (rawPath === 'study') {
+      setActiveTab('study');
+    } else if (rawPath === 'planner') {
+      setActiveTab('dual-planner');
+    } else if (rawPath === 'simulator') {
+      setActiveTab('grade-simulator');
+    } else if (rawPath === 'reviews') {
+      setActiveTab('spaced-revision');
+    } else if (rawPath === 'ranking') {
+      setActiveTab('ranking');
+    } else if (rawPath === 'manual') {
+      setActiveTab('manual');
+    } else if (rawPath === 'dashboard' || rawPath === '') {
+      setActiveTab('dashboard');
+    }
+  }, [location.pathname]);
   const [viewMode, setViewMode] = useState<'student' | 'parent'>('student');
+
+  // Guard role-based viewMode exclusivity (Students cannot access Parent view)
+  useEffect(() => {
+    if (userProfile?.role === 'student') {
+      if (viewMode !== 'student') setViewMode('student');
+    } else if (userProfile?.role === 'parent') {
+      if (!sessionStorage.getItem('estudei_view_mode_set')) {
+        setViewMode('parent');
+        sessionStorage.setItem('estudei_view_mode_set', 'true');
+      }
+    }
+  }, [userProfile?.role, viewMode]);
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
   const [showThemeModal, setShowThemeModal] = useState<boolean>(false);
   const [showDriveModal, setShowDriveModal] = useState<boolean>(false);
@@ -80,7 +143,79 @@ function MainAppContent() {
   const [showSchoolPlatformsModal, setShowSchoolPlatformsModal] = useState<boolean>(false);
   const [showTimetableModal, setShowTimetableModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState<boolean>(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
+  const [showPWAModal, setShowPWAModal] = useState<boolean>(false);
+  const [showManualModal, setShowManualModal] = useState<boolean>(false);
+  const [showCreateClassModal, setShowCreateClassModal] = useState<boolean>(false);
+  const [showJoinClassModal, setShowJoinClassModal] = useState<boolean>(false);
+  const [activeOlympiadClassGroup, setActiveOlympiadClassGroup] = useState<ClassGroup | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
+
+  const [latestServerVersion, setLatestServerVersion] = useState<string>('1.3.0');
+
+  // Service Worker and Version Checker for updates / new commits
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkServerVersion = async () => {
+      try {
+        const res = await fetch('/api/version?t=' + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          const serverVer = data.version || '1.3.0';
+          if (isMounted) setLatestServerVersion(serverVer);
+
+          const storedVersion = localStorage.getItem('estudei_app_version');
+          const dismissedVersion = sessionStorage.getItem('dismissed_update_version');
+
+          if (!storedVersion) {
+            localStorage.setItem('estudei_app_version', serverVer);
+          } else if (storedVersion !== serverVer && dismissedVersion !== serverVer) {
+            if (isMounted) setUpdateAvailable(true);
+          }
+        }
+      } catch (e) {
+        // Silent catch
+      }
+    };
+
+    const timer = setTimeout(checkServerVersion, 2000);
+    const interval = setInterval(checkServerVersion, 600000); // 10 min
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleReloadApp = () => {
+    if (latestServerVersion) {
+      localStorage.setItem('estudei_app_version', latestServerVersion);
+      sessionStorage.setItem('dismissed_update_version', latestServerVersion);
+    }
+    setUpdateAvailable(false);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+        window.location.reload();
+      }).catch(() => {
+        window.location.reload();
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+
+  const handleDismissUpdate = () => {
+    setUpdateAvailable(false);
+    if (latestServerVersion) {
+      sessionStorage.setItem('dismissed_update_version', latestServerVersion);
+    }
+  };
 
   // School Timetable State (Grade Horária Escolar Semanal)
   const [schoolTimetable, setSchoolTimetable] = useState<SchoolTimetable>(() => {
@@ -137,35 +272,20 @@ function MainAppContent() {
   });
 
   // Google Drive & Ecosystem Sync State
+  const cleanDriveSyncInfo: GoogleDriveSyncInfo = {
+    isConfigured: false,
+    studentGoogleAccount: '',
+    parentEmails: [],
+    folderName: 'Estudei_Passei_Data',
+    isSynced: false,
+    lastSyncedAt: 'Nunca',
+    connectedChildrenProfiles: [],
+    activeChildId: ''
+  };
+
   const [driveSyncInfo, setDriveSyncInfo] = useState<GoogleDriveSyncInfo>(() => {
     const saved = localStorage.getItem('estudei_driveSync');
-    return saved ? JSON.parse(saved) : {
-      isConfigured: true,
-      studentGoogleAccount: 'lucas.toledo@gmail.com',
-      parentEmails: ['responsavel@exemplo.com.br'],
-      folderName: 'Estudei_EnsinoMedio_Data',
-      isSynced: true,
-      lastSyncedAt: 'Hoje às 10:30',
-      connectedChildrenProfiles: [
-        {
-          id: 'child-1',
-          studentName: 'Lucas Toledo',
-          studentYear: '2º Ano do Ensino Médio',
-          schoolName: 'Colégio Estudei & Passei',
-          guardianEmail: 'responsavel@exemplo.com.br',
-          lastSyncedAt: 'Hoje'
-        },
-        {
-          id: 'child-2',
-          studentName: 'Ana Toledo',
-          studentYear: '3º Ano do Ensino Médio / Medicina',
-          schoolName: 'Colégio Estudei & Passei',
-          guardianEmail: 'responsavel@exemplo.com.br',
-          lastSyncedAt: 'Ontem'
-        }
-      ],
-      activeChildId: 'child-1'
-    };
+    return saved ? JSON.parse(saved) : cleanDriveSyncInfo;
   });
 
   // Theme & Layout Preferences
@@ -184,7 +304,7 @@ function MainAppContent() {
     return (saved as LayoutDensity) || 'default';
   });
 
-  // Core Data States with localStorage persistence
+  // Core Data States with localStorage persistence (Clean defaults for real users)
   const [schoolConfig, setSchoolConfig] = useState<SchoolConfig>(() => {
     const saved = localStorage.getItem('estudei_schoolConfig');
     return saved ? JSON.parse(saved) : initialSchoolConfig;
@@ -192,32 +312,98 @@ function MainAppContent() {
 
   const [subjects, setSubjects] = useState<Subject[]>(() => {
     const saved = localStorage.getItem('estudei_subjects');
-    return saved ? JSON.parse(saved) : initialSubjects;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [evaluations, setEvaluations] = useState<Evaluation[]>(() => {
     const saved = localStorage.getItem('estudei_evaluations');
-    return saved ? JSON.parse(saved) : initialEvaluations;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [studyLogs, setStudyLogs] = useState<StudySessionLog[]>(() => {
     const saved = localStorage.getItem('estudei_studyLogs');
-    return saved ? JSON.parse(saved) : initialStudyLogs;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [spacedRevisions, setSpacedRevisions] = useState<SpacedRevision[]>(() => {
     const saved = localStorage.getItem('estudei_spacedRevisions');
-    return saved ? JSON.parse(saved) : initialSpacedRevisions;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [parentSettings, setParentSettings] = useState<ParentGuardSettings>(() => {
     const saved = localStorage.getItem('estudei_parentSettings');
-    return saved ? JSON.parse(saved) : initialParentSettings;
+    return saved ? JSON.parse(saved) : cleanParentSettings;
   });
+
+  // Smart Study Timer & Daily Plan Hook
+  const handleAddStudyLog = (log: StudySessionLog) => {
+    setStudyLogs(prev => [log, ...prev]);
+  };
+
+  const {
+    dailyPlan,
+    generateDailyPlan,
+    markBlockCompleted,
+    addBlock: addDailyPlanBlock,
+    removeBlock: removeDailyPlanBlock,
+    setDailyPlan
+  } = useDailyPlan({
+    subjects,
+    studentTasks,
+    spacedRevisions,
+    evaluations,
+    studyLogs,
+    onAddStudyLog: handleAddStudyLog
+  });
+
+  const { startActivity, finishActivity } = useActivityTracker({
+    onAutoTrackCompleted: handleAddStudyLog,
+    activePlanBlock: dailyPlan?.blocks.find(b => !b.completed)
+  });
+
+  // Smart Timer Modal States
+  const [showStudySessionModal, setShowStudySessionModal] = useState<boolean>(false);
+  const [studySessionBlockIndex, setStudySessionBlockIndex] = useState<number>(0);
+  const [isStudySessionFreeMode, setIsStudySessionFreeMode] = useState<boolean>(false);
+  const [showDailyPlanEditorModal, setShowDailyPlanEditorModal] = useState<boolean>(false);
+  const [showExternalActivityModal, setShowExternalActivityModal] = useState<boolean>(false);
+
+  // Populate Demo Data if Demo Mode is explicitly toggled
+  useEffect(() => {
+    if (isDemoMode) {
+      setSubjects(initialSubjects);
+      setEvaluations(initialEvaluations);
+      setStudyLogs(initialStudyLogs);
+      setSpacedRevisions(initialSpacedRevisions);
+      setParentSettings({
+        studentName: 'Lucas Toledo (Demo)',
+        studentYear: '2º Ano do Ensino Médio',
+        schoolName: 'Colégio Estudei & Passei (Demo)',
+        guardianEmail: 'responsavel@exemplo.com.br',
+        lgpdAccepted: true,
+        parentPin: '1234'
+      });
+    }
+  }, [isDemoMode]);
+
+  const activeStudentProfile = (familyStudents || []).find(s => s.uid === activeStudentUid);
+  const activeStudentName = userProfile
+    ? (userProfile.role === 'student'
+        ? (userProfile.name || 'Estudante')
+        : (activeStudentProfile?.name || ((familyStudents || []).length > 0 ? (familyStudents[0]?.name || 'Estudante') : 'Estudante')))
+    : (isDemoMode ? 'Lucas Toledo (Demo)' : 'Estudante');
 
   // Timer States
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+
+  // Auto open auth modal if URL contains invite code parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('inviteCode') || params.get('invite')) {
+      setShowAuthModal(true);
+    }
+  }, []);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -369,7 +555,7 @@ function MainAppContent() {
 
   // Switch Active Child Profile Handler
   const handleSwitchActiveChildProfile = (childId: string) => {
-    const child = driveSyncInfo.connectedChildrenProfiles.find(c => c.id === childId);
+    const child = (driveSyncInfo?.connectedChildrenProfiles || []).find(c => c.id === childId);
     if (child) {
       setParentSettings(prev => ({
         ...prev,
@@ -438,18 +624,8 @@ function MainAppContent() {
     setStudyLogs(prev => [newLog, ...prev]);
   };
 
-  // Handle onboarding completion
-  const handleOnboardingComplete = (data: { subjects: Subject[]; schoolConfig: SchoolConfig }) => {
-    if (data.subjects.length > 0) {
-      setSubjects(data.subjects);
-    }
-    if (data.schoolConfig) {
-      setSchoolConfig(data.schoolConfig);
-    }
-  };
-
   // Sync active student state with Firestore database
-  useStudentFirestoreSync({
+  const { saveStudentDataNow } = useStudentFirestoreSync({
     subjects,
     setSubjects,
     timetable: schoolTimetable,
@@ -467,39 +643,81 @@ function MainAppContent() {
     onNewUserWithoutData: () => setShowOnboardingModal(true)
   });
 
+  // Handle onboarding completion
+  const handleOnboardingComplete = async (data: { subjects: Subject[]; schoolConfig: SchoolConfig }) => {
+    let nextSubjects = subjects;
+    let nextConfig = schoolConfig;
+    if (data.subjects.length > 0) {
+      setSubjects(data.subjects);
+      nextSubjects = data.subjects;
+    }
+    if (data.schoolConfig) {
+      setSchoolConfig(data.schoolConfig);
+      nextConfig = data.schoolConfig;
+    }
+    await saveStudentDataNow({
+      subjects: nextSubjects,
+      schoolConfig: nextConfig
+    });
+  };
+
   return (
     <div className={`${themeRootClass} flex flex-col antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-300`}>
+      {/* Update Available Top Alert Banner */}
+      {updateAvailable && (
+        <div className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center justify-between shadow-lg sticky top-0 z-50 animate-in slide-in-from-top">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="w-4 h-4 text-slate-950 animate-pulse shrink-0" />
+            <span>
+              <strong>🚀 Nova atualização / commit disponível!</strong> O aplicativo possui novas melhorias prontas para uso.
+            </span>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleReloadApp}
+              className="px-3 py-1 bg-slate-950 text-white rounded-lg text-[11px] font-black hover:bg-slate-800 transition shadow-sm flex items-center space-x-1"
+            >
+              <RefreshCw className="w-3 h-3 text-amber-300" />
+              <span>Atualizar Agora (1-Clique)</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissUpdate}
+              className="text-slate-900 hover:text-slate-700 p-1"
+              title="Fechar aviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Demo Mode Read-Only Banner */}
       <DemoModeBanner onOpenAuthModal={() => setShowAuthModal(true)} />
 
-      {/* Top Header Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-        timerMinutes={timerMins}
-        timerSeconds={timerSecs}
-        isTimerRunning={isTimerRunning}
-        onToggleTimer={handleToggleTimer}
-        onResetTimer={handleResetTimer}
-        parentSettings={parentSettings}
-        currentTheme={currentTheme}
-        onOpenThemeModal={() => setShowThemeModal(true)}
-        onOpenDriveModal={() => setShowDriveModal(true)}
-        onOpenSubjectModal={() => setShowSubjectModal(true)}
-        onOpenBookScannerModal={() => setShowBookScannerModal(true)}
-        onOpenQuickTaskModal={() => setShowQuickTaskModal(true)}
-        onOpenSchoolPlatformsModal={() => setShowSchoolPlatformsModal(true)}
-        onOpenTimetableModal={() => setShowTimetableModal(true)}
-        onOpenAuthModal={() => setShowAuthModal(true)}
-        onOpenOnboardingModal={() => setShowOnboardingModal(true)}
+      {/* User Manual & Help Center Modal */}
+      <UserManualModal
+        isOpen={showManualModal}
+        onClose={() => setShowManualModal(false)}
+      />
+
+      {/* PWA Install & Update Checker Modal */}
+      <PWAInstallModal
+        isOpen={showPWAModal}
+        onClose={() => setShowPWAModal(false)}
       />
 
       {/* Auth & Family Isolation Modal */}
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
       />
 
       {/* Initial Setup Onboarding Wizard */}
@@ -576,10 +794,31 @@ function MainAppContent() {
         onAddScannedSubjectOrTopics={handleAddScannedSubjectOrTopics}
       />
 
-      {/* Main Container */}
-      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 ${densityClass}`}>
-        {/* VIEW MODE 1: PARENT DASHBOARD */}
-        {viewMode === 'parent' ? (
+      {/* Pop-Up Alert de Provas Próximas */}
+      <UpcomingExamsAlertModal
+        evaluations={evaluations}
+        subjects={subjects}
+        studentTasks={studentTasks}
+        onNavigateToEvaluations={() => setActiveTab('grade-simulator')}
+      />
+
+      {/* Main Unified App Layout */}
+      <AppLayout
+        activeTab={activeTab}
+        onNavigateTab={(tab) => setActiveTab(tab)}
+        recoveryCount={subjects.reduce((acc, sub) => acc + (sub.topics || []).filter(t => t.needsRecovery).length, 0)}
+        onOpenQuickTaskModal={() => setShowQuickTaskModal(true)}
+        onOpenSubjectModal={() => setShowSubjectModal(true)}
+        onOpenTimetableModal={() => setShowTimetableModal(true)}
+        onOpenSchoolPlatformsModal={() => setShowSchoolPlatformsModal(true)}
+        onOpenBookScannerModal={() => setShowBookScannerModal(true)}
+        onOpenPWAModal={() => setShowPWAModal(true)}
+        onOpenThemeModal={() => setShowThemeModal(true)}
+        onOpenManualModal={() => setShowManualModal(true)}
+      >
+        {activeTab === 'manual' ? (
+          <UserManualPage onNavigateTab={(tab) => setActiveTab(tab)} />
+        ) : viewMode === 'parent' ? (
           <ParentDashboardSection
             subjects={subjects}
             evaluations={evaluations}
@@ -592,51 +831,12 @@ function MainAppContent() {
           <>
             {/* TABS CONTROLLER */}
             {activeTab === 'dashboard' && (
-              <div className="space-y-6">
-                <DashboardLayoutManager
-                  layoutType={currentLayout}
-                  subjects={subjects}
-                  evaluations={evaluations}
-                  studyLogs={studyLogs}
-                  schoolConfig={schoolConfig}
-                  studentName={parentSettings.studentName}
-                  showConfigModal={showConfigModal}
-                  onToggleConfigModal={() => setShowConfigModal(!showConfigModal)}
-                  onNavigateTab={(tab) => setActiveTab(tab)}
-                  timerMinutes={timerMins}
-                  timerSeconds={timerSecs}
-                  isTimerRunning={isTimerRunning}
-                  onToggleTimer={handleToggleTimer}
-                  onResetTimer={handleResetTimer}
-                  onLogStudySession={handleLogStudySession}
-                  onUpdateSubjects={setSubjects}
-                  onSaveConfig={(cfg) => setSchoolConfig(cfg)}
-                />
-
-                {/* Agenda Rápida do Aluno & MS Teams / Google Agenda */}
-                <StudentTasksWidgetSection
-                  tasks={studentTasks}
-                  subjects={subjects}
-                  onToggleCompleted={handleToggleTaskCompleted}
-                  onDeleteTask={handleDeleteTask}
-                  onOpenQuickTaskModal={() => setShowQuickTaskModal(true)}
-                  onOpenSchoolPlatformsModal={() => setShowSchoolPlatformsModal(true)}
-                />
-
-                {/* Ciclo de Estudos Adaptativo & Aula Dada Hoje */}
-                <AdaptiveStudyCycleSection
-                  subjects={subjects}
-                  timetable={schoolTimetable}
-                  studentTasks={studentTasks}
-                  onLogStudySession={(log) => setStudyLogs(prev => [ { ...log, id: `log-${Date.now()}` }, ...prev ])}
-                  onOpenTimetableModal={() => setShowTimetableModal(true)}
-                />
-              </div>
+              <Dashboard />
             )}
 
             {/* TAB: CENTRAL DE IA & ESTUDOS ATIVOS (FUNDIDO) */}
-            {(activeTab === 'active-study-hub' || activeTab === 'ai-hub') && (
-              <ActiveStudyHubSection subjects={subjects} />
+            {(activeTab === 'study' || activeTab === 'active-study-hub' || activeTab === 'ai-hub') && (
+              <StudyScreen />
             )}
 
             {/* TAB 2: PLANEJAMENTO DUAL */}
@@ -648,13 +848,19 @@ function MainAppContent() {
               />
             )}
 
-            {/* TAB 3: SIMULADOR DE NOTAS */}
+            {/* TAB 3: SIMULADOR DE NOTAS E AVALIAÇÕES INTELIGENTES */}
             {activeTab === 'grade-simulator' && (
               <GradeManagerSection
                 subjects={subjects}
                 evaluations={evaluations}
                 schoolConfig={schoolConfig}
+                studentTasks={studentTasks}
+                spacedRevisions={spacedRevisions}
                 onUpdateEvaluations={setEvaluations}
+                onUpdateSubjects={setSubjects}
+                onUpdateStudentTasks={setStudentTasks}
+                onUpdateSpacedRevisions={setSpacedRevisions}
+                onNavigateTab={(tab) => setActiveTab(tab)}
               />
             )}
 
@@ -666,9 +872,103 @@ function MainAppContent() {
                 onUpdateRevisions={setSpacedRevisions}
               />
             )}
+
+            {/* TAB 6: CONQUISTAS E PREMIAÇÕES FAMILIARES */}
+            {activeTab === 'achievements' && (
+              <AchievementsWall />
+            )}
+
+            {/* TAB 7: RANKING DA TURMA E OLIMPÍADAS */}
+            {activeTab === 'ranking' && (
+              <ClassRanking
+                onCreateClassOpen={() => setShowCreateClassModal(true)}
+                onJoinClassOpen={() => setShowJoinClassModal(true)}
+                onOpenOlympiads={(classGroup) => setActiveOlympiadClassGroup(classGroup)}
+              />
+            )}
           </>
         )}
-      </main>
+      </AppLayout>
+
+      {/* Class Modals */}
+      {showCreateClassModal && (
+        <CreateClassModal
+          onClose={() => setShowCreateClassModal(false)}
+          onClassCreated={(newClass) => {
+            setShowCreateClassModal(false);
+          }}
+        />
+      )}
+
+      {showJoinClassModal && (
+        <JoinClassModal
+          onClose={() => setShowJoinClassModal(false)}
+          onJoined={() => {
+            setShowJoinClassModal(false);
+          }}
+        />
+      )}
+
+      {activeOlympiadClassGroup && (
+        <OlympiadManager
+          classGroup={activeOlympiadClassGroup}
+          onClose={() => setActiveOlympiadClassGroup(null)}
+        />
+      )}
+
+      {/* MODAL DE EXECUÇÃO DO CICLO DE ESTUDOS ADAPTATIVO */}
+      {showStudySessionModal && (
+        <CycleSession
+          isOpen={showStudySessionModal}
+          onClose={() => setShowStudySessionModal(false)}
+          dailyCycle={dailyPlan}
+          initialBlockIndex={studySessionBlockIndex}
+          isFreeMode={isStudySessionFreeMode}
+          subjects={subjects}
+          onMarkBlockCompleted={(blockId, mins, qDone, qCorrect, notes) => {
+            markBlockCompleted(blockId, mins, qDone, qCorrect, notes);
+          }}
+          onAddFreeLog={(log) => setStudyLogs(prev => [log, ...prev])}
+        />
+      )}
+
+      {showDailyPlanEditorModal && (
+        <DailyPlanGeneratorModal
+          isOpen={showDailyPlanEditorModal}
+          onClose={() => setShowDailyPlanEditorModal(false)}
+          dailyPlan={dailyPlan}
+          subjects={subjects}
+          onGeneratePlan={() => generateDailyPlan()}
+          onAddBlock={(blk) => addDailyPlanBlock(blk)}
+          onRemoveBlock={(blkId) => removeDailyPlanBlock(blkId)}
+          onUpdatePlan={(updatedPlan) => setDailyPlan(updatedPlan)}
+        />
+      )}
+
+      {showExternalActivityModal && (
+        <ExternalActivityForm
+          isOpen={showExternalActivityModal}
+          onClose={() => setShowExternalActivityModal(false)}
+          subjects={subjects}
+          onLogActivity={(data) => {
+            const newLog: StudySessionLog = {
+              id: `extlog_${Date.now()}`,
+              subjectId: data.subjectId,
+              subjectName: data.subjectName,
+              topic: data.topic,
+              minutes: data.minutes,
+              date: new Date().toISOString().split('T')[0],
+              mode: 'escola',
+              type: data.type as any,
+              questionsDone: data.questionsDone,
+              questionsCorrect: data.questionsCorrect,
+              timestamp: new Date().toISOString()
+            };
+            setStudyLogs(prev => [newLog, ...prev]);
+          }}
+        />
+      )}
+
 
       {/* Footer */}
       <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 text-xs py-6 mt-12">
@@ -690,8 +990,14 @@ function MainAppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <StudyTimerProvider>
+          <BrowserRouter>
+            <MainAppContent />
+          </BrowserRouter>
+        </StudyTimerProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

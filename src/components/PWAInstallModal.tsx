@@ -28,7 +28,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
-  const APP_VERSION = 'v1.2.0 (Build Julho 2026 - PWA Standalone)';
+  const APP_VERSION = 'v1.3.0 (Build Julho 2026 - PWA Standalone)';
 
   useEffect(() => {
     // Detect Device
@@ -106,16 +106,25 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({ isOpen, onClos
         await swRegistration.update();
       }
 
-      // Check server API health
-      const response = await fetch('/api/health?t=' + Date.now());
-      if (response.ok) {
-        setTimeout(() => {
-          setIsCheckingUpdate(false);
-          setUpdateStatus('updated');
-        }, 800);
-      } else {
-        throw new Error('Servidor indisponível');
+      // Query version API to detect new commits/builds
+      const versionRes = await fetch('/api/version?t=' + Date.now());
+      if (versionRes.ok) {
+        const verData = await versionRes.json();
+        const stored = localStorage.getItem('estudei_app_version');
+        if (stored && stored !== verData.version) {
+          setTimeout(() => {
+            setIsCheckingUpdate(false);
+            setUpdateStatus('available');
+          }, 600);
+          return;
+        }
+        localStorage.setItem('estudei_app_version', verData.version);
       }
+
+      setTimeout(() => {
+        setIsCheckingUpdate(false);
+        setUpdateStatus('updated');
+      }, 800);
     } catch (err) {
       setTimeout(() => {
         setIsCheckingUpdate(false);

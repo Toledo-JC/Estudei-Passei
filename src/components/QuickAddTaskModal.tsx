@@ -31,8 +31,8 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
 
   if (!isOpen) return null;
 
-  const activeSubjects = subjects.filter(s => s.enabled !== false);
-  const selectedSubject = subjects.find(s => s.id === selectedSubjectId) || activeSubjects[0];
+  const activeSubjects = (subjects || []).filter(s => s.enabled !== false);
+  const selectedSubject = (subjects || []).find(s => s.id === selectedSubjectId) || activeSubjects[0];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

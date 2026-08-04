@@ -43,13 +43,34 @@ import {
   SimuladoResult
 } from '../types';
 import { AITutorSection } from './AITutorSection';
+import { DiagnosticPanel } from './DiagnosticPanel';
+import { QuestionsTracker } from './QuestionsTracker';
+import { Evaluation, StudySessionLog, SchoolConfig } from '../types';
 
 interface ActiveStudyHubSectionProps {
   subjects: Subject[];
+  evaluations?: Evaluation[];
+  studyLogs?: StudySessionLog[];
+  schoolConfig?: SchoolConfig;
+  studentName?: string;
+  studentUid?: string | null;
 }
 
-export const ActiveStudyHubSection: React.FC<ActiveStudyHubSectionProps> = ({ subjects }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'flashcards' | 'quizzes' | 'summaries' | 'simulados' | 'ai-tutor' | 'analytics'>('flashcards');
+export const ActiveStudyHubSection: React.FC<ActiveStudyHubSectionProps> = ({
+  subjects,
+  evaluations = [],
+  studyLogs = [],
+  schoolConfig = {
+    periodType: 'bimestre',
+    passingScore: 6.0,
+    maxScorePerPeriod: 10.0,
+    recoveryType: 'bimestral',
+    recoveryCalculation: 'substitutiva'
+  },
+  studentName = 'Estudante',
+  studentUid = null
+}) => {
+  const [activeSubTab, setActiveSubTab] = useState<'flashcards' | 'quizzes' | 'summaries' | 'simulados' | 'ai-tutor' | 'analytics' | 'diagnostic' | 'questions'>('flashcards');
 
   // ==========================================
   // 1. FLASHCARDS STATE & INITIAL STARTER DECKS
@@ -158,7 +179,7 @@ export const ActiveStudyHubSection: React.FC<ActiveStudyHubSectionProps> = ({ su
     localStorage.setItem('estudei_flashcard_decks', JSON.stringify(flashcardDecks));
   }, [flashcardDecks]);
 
-  const activeDeck = flashcardDecks.find(d => d.id === selectedDeckId) || flashcardDecks[0];
+  const activeDeck = (flashcardDecks || []).find(d => d.id === selectedDeckId) || (flashcardDecks || [])[0];
   const currentCard = activeDeck?.cards[currentCardIndex];
 
   const handleRateCard = (difficulty: 'facil' | 'medio' | 'dificil') => {
@@ -183,7 +204,7 @@ export const ActiveStudyHubSection: React.FC<ActiveStudyHubSectionProps> = ({ su
 
     setIsGeneratingFlashcards(true);
     try {
-      const selectedSubject = subjects.find(s => s.id === newDeckSubjectId) || subjects[0];
+      const selectedSubject = (subjects || []).find(s => s.id === newDeckSubjectId) || (subjects || [])[0];
       const response = await fetch('/api/ai/generate-flashcards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,7 +348,7 @@ export const ActiveStudyHubSection: React.FC<ActiveStudyHubSectionProps> = ({ su
 
     setIsGeneratingQuiz(true);
     try {
-      const selectedSub = subjects.find(s => s.id === quizSubjectId) || subjects[0];
+      const selectedSub = (subjects || []).find(s => s.id === quizSubjectId) || (subjects || [])[0];
       const response = await fetch('/api/ai/exercises', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -411,15 +432,15 @@ As forças de ação e reação nunca se anulam pois atuam em **corpos distintos
     ];
   });
 
-  const [selectedSummaryId, setSelectedSummaryId] = useState<string>(summaries[0]?.id || '');
-  const activeSummary = summaries.find(s => s.id === selectedSummaryId) || summaries[0];
+  const [selectedSummaryId, setSelectedSummaryId] = useState<string>((summaries || [])[0]?.id || '');
+  const activeSummary = (summaries || []).find(s => s.id === selectedSummaryId) || (summaries || [])[0];
 
   // Speech Synthesis Audio Player State
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [speechRate, setSpeechRate] = useState<number>(1.0);
   const [isAudioGenerating, setIsAudioGenerating] = useState<boolean>(false);
   const [summaryTopicInput, setSummaryTopicInput] = useState<string>('');
-  const [summarySubjectIdInput, setSummarySubjectIdInput] = useState<string>(subjects[0]?.id || '');
+  const [summarySubjectIdInput, setSummarySubjectIdInput] = useState<string>((subjects || [])[0]?.id || '');
   const [rawNotesInput, setRawNotesInput] = useState<string>('');
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -485,7 +506,7 @@ As forças de ação e reação nunca se anulam pois atuam em **corpos distintos
 
     setIsAudioGenerating(true);
     try {
-      const selectedSub = subjects.find(s => s.id === summarySubjectIdInput) || subjects[0];
+      const selectedSub = (subjects || []).find(s => s.id === summarySubjectIdInput) || (subjects || [])[0];
       const response = await fetch('/api/ai/generate-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -889,6 +910,32 @@ As forças de ação e reação nunca se anulam pois atuam em **corpos distintos
         >
           <Sparkles className="w-4 h-4 text-amber-500" />
           <span>🤖 IA Tutor, Redação & NotebookLM</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('diagnostic')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition whitespace-nowrap ${
+            activeSubTab === 'diagnostic'
+              ? 'bg-indigo-600 text-white shadow-sm border border-indigo-500 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <Brain className="w-4 h-4 text-indigo-400" />
+          <span>🎯 Diagnóstico IA & Lacunas</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('questions')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition whitespace-nowrap ${
+            activeSubTab === 'questions'
+              ? 'bg-emerald-600 text-white shadow-sm border border-emerald-500 font-black'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <Target className="w-4 h-4 text-emerald-500" />
+          <span>🎯 Questões & Acertos</span>
         </button>
 
         <button
@@ -1760,6 +1807,27 @@ As forças de ação e reação nunca se anulam pois atuam em **corpos distintos
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-TAB 7: DIAGNÓSTICO IA & ANÁLISE DE LACUNAS */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'diagnostic' && (
+        <DiagnosticPanel
+          subjects={subjects}
+          evaluations={evaluations}
+          studyLogs={studyLogs}
+          schoolConfig={schoolConfig}
+          studentName={studentName}
+          studentUid={studentUid}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-TAB 8: REGISTRO DE QUESTÕES FEITAS & ACERTOS */}
+      {/* ========================================================================= */}
+      {activeSubTab === 'questions' && (
+        <QuestionsTracker subjects={subjects} />
       )}
     </div>
   );
